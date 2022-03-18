@@ -1,9 +1,11 @@
-﻿using Challenge.Context;
+﻿using Challenge.Core.Interfaces;
+using Challenge.Core.Models.Dtos;
 using Challenge.Entities;
-using Challenge.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Challenge.Controllers
 {
@@ -12,50 +14,63 @@ namespace Challenge.Controllers
     [Authorize]
     public class PersonajeController : ControllerBase
     {
-        private readonly IPersonajeRepository _personajeRepository;
+        private readonly IPersonajeService _personajeService;
 
-        public PersonajeController(IPersonajeRepository personajeRepository)
+        public PersonajeController(IPersonajeService personajeService)
         {
-            _personajeRepository = personajeRepository;
+            _personajeService = personajeService;
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> GetAllPersonajes()
         {
-            return Ok(_personajeRepository.GetAll());
+            try
+            {
+                var personajes = await _personajeService.GetAll();
+                if (personajes != null)
+                    return Ok(personajes);
+                else
+                    return NotFound("No se encontraron personajes");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetPersonaje(int id)
+        {
+            var result = await _personajeService.GetById(id);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 404, result);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePersonaje(int id)
+        {
+            var result = await _personajeService.Delete(id);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 400, result);
         }
 
         [HttpPost]
-        public IActionResult Post(Personaje personaje)
+        public async Task<IActionResult> Postpersonaje([FromForm] PersonajeDtoForInsert personajeDto)
         {
-            _personajeRepository.Insert(personaje);
-
-            return Ok(_personajeRepository.GetAll());
+            var result = await _personajeService.Insert(personajeDto);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 400, result);
         }
 
-        [HttpPut]
-        public IActionResult Put(Personaje personaje)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put(int id, [FromForm] PersonajeDtoForInsert dto)
         {
-            if (_personajeRepository.GetById(personaje.Id) == null)
-                return BadRequest();
+            var result = await _personajeService.Update(id, dto);
 
-            _personajeRepository.Update(personaje);
-
-            return Ok(_personajeRepository.GetAll());
-
-        }
-
-        [HttpDelete]
-        [Route("{id}")]
-        public IActionResult Delete(int id)
-        {
-            if (_personajeRepository.GetById(id) == null)
-
-                return BadRequest();
-
-            _personajeRepository.Delete(id);
-
-            return Ok(_personajeRepository.GetAll());
+            return StatusCode(result.StatusCode, result);
         }
 
     }

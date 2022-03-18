@@ -1,10 +1,12 @@
-﻿using Challenge.Context;
+﻿using Challenge.Core.Interfaces;
+using Challenge.Core.Models.Dtos;
 using Challenge.Entities;
-using Challenge.Interfaces;
 using Challenge.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Challenge.Controllers
 {
@@ -14,51 +16,63 @@ namespace Challenge.Controllers
 
     public class PeliculaSerieController : ControllerBase
     {
-        private readonly IPeliculaSerieRepository _peliculaSerieRepository;
+        private readonly IPeliculaSerieService _peliculaSerieService;
 
-        public PeliculaSerieController(PeliculaSerieRepository peliculaSerieRepository)
+        public PeliculaSerieController(IPeliculaSerieService peliculaSerieService)
         {
-            _peliculaSerieRepository = peliculaSerieRepository;
+            _peliculaSerieService = peliculaSerieService;
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> GetAllPeliculaSeries()
         {
-            return Ok(_peliculaSerieRepository.GetAll());
+            try
+            {
+                var peliculaSeries = await _peliculaSerieService.GetAll();
+                if (peliculaSeries != null)
+                    return Ok(peliculaSeries);
+                else
+                    return NotFound("No se encontraron PeliculaSeries");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetPeliculaSerie(int id)
+        {
+            var result = await _peliculaSerieService.GetById(id);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 404, result);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePeliculaSerie(int id)
+        {
+            var result = await _peliculaSerieService.Delete(id);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 400, result);
         }
 
         [HttpPost]
-        public IActionResult Post(PeliculaSerie peliculaSerie)
+        public async Task<IActionResult> PostPeliculaSerie([FromForm] PeliculaSerieDtoForInsert peliculaSerieDto)
         {
-            _peliculaSerieRepository.Insert(peliculaSerie);
-
-            return Ok(_peliculaSerieRepository.GetAll());
+            var result = await _peliculaSerieService.Insert(peliculaSerieDto);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 400, result);
         }
 
-        [HttpPut]
-        public IActionResult Put(PeliculaSerie peliculaSerie)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put(int id, [FromForm] PeliculaSerieDtoForInsert dto)
         {
-            if(_peliculaSerieRepository.GetById(peliculaSerie.Id) == null)
-                return BadRequest();
+            var result = await _peliculaSerieService.Update(id, dto);
 
-            _peliculaSerieRepository.Update(peliculaSerie);
-
-            return Ok(_peliculaSerieRepository.GetAll());
-
-        }
-
-        [HttpDelete]
-        [Route("{id}")]
-        public IActionResult Delete(int id)
-        {
-            if (_peliculaSerieRepository.GetById(id) == null)
-
-                return BadRequest();
-
-            _peliculaSerieRepository.Delete(id);
-
-            return Ok(_peliculaSerieRepository.GetAll());
-
+            return StatusCode(result.StatusCode, result);
         }
 
     }

@@ -1,26 +1,22 @@
-using Challenge.Context;
-using Challenge.Interfaces;
-using Challenge.Repositories;
+using Challenge.DataAccess;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Identity;
 using Challenge.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Challenge.Core.Interfaces;
+using Challenge.Core.Helper;
+using Challenge.Core.Business;
+using Challenge.Core.Mapper;
 
 namespace Challenge
 {
@@ -69,15 +65,12 @@ namespace Challenge
                 });
             });
 
-            services.AddIdentity<User, IdentityRole>()
-                .AddEntityFrameworkStores<UserContext>()
-                .AddDefaultTokenProviders();
+            var key = Encoding.ASCII.GetBytes(Configuration["JWT:Secret"]);
 
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             })
                 .AddJwtBearer(options =>
                 {
@@ -85,32 +78,29 @@ namespace Challenge
                     options.RequireHttpsMetadata = false;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidAudience = "https://localhost:5001",
-                        ValidIssuer = "https://localhost:5001",
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("KeyScretaSuperLargaDeAUTORIZACION"))
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key)
                     };
                 });
 
             services.AddEntityFrameworkSqlServer();
 
-            services.AddDbContextPool<ChallengeContext>((services, options) =>
+            services.AddDbContext<ChallengeContext>((services, options) =>
             {
                 options.UseInternalServiceProvider(services);
-                options.UseSqlServer(Configuration.GetConnectionString("ChallengeConnectionString"));
+                options.UseSqlServer(this.Configuration["SqlConnectionString"]);
             });
 
-            services.AddDbContext<UserContext>((services, options) =>
-            {
-                options.UseInternalServiceProvider(services);
-                options.UseSqlServer(Configuration.GetConnectionString("UsersConnectionString"));
-            });
-
-            services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
-            services.AddScoped<IPersonajeRepository, PersonajeRepository>();
-            services.AddScoped<IGeneroRepository, GeneroRepository>();
-            services.AddScoped<IPeliculaSerieRepository, PeliculaSerieRepository>();
+            services.AddScoped<IEmailSender, EmailSender>();
+            services.AddScoped<IPersonajeService, PersonajeService>();
+            services.AddScoped<IGeneroService, GeneroService>();
+            services.AddScoped<IPeliculaSerieService, PeliculaSerieService>();
+            services.AddScoped<IUserService, UserService>();
+            services.Configure<AuthMessageSenderOptions>(Configuration);
+            services.AddScoped<IJwtHelper, JwtHelper>();
+            services.AddScoped<IEntityMapper, EntityMapper>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -126,6 +116,8 @@ namespace Challenge
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 

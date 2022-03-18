@@ -1,9 +1,11 @@
-﻿using Challenge.Context;
+﻿using Challenge.Core.Interfaces;
+using Challenge.Core.Models.Dtos;
 using Challenge.Entities;
-using Challenge.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Challenge.Controllers
 {
@@ -12,37 +14,46 @@ namespace Challenge.Controllers
     [Authorize]
     public class GeneroController : ControllerBase
     {
-        private readonly IGeneroRepository _generoRepository;
+        private readonly IGeneroService _generoService;
 
-        public GeneroController(IGeneroRepository generoRepository)
+        public GeneroController(IGeneroService generoService)
         {
-            _generoRepository = generoRepository;
+            _generoService = generoService;
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> GetAllGeneros()
         {
-            return Ok(_generoRepository.GetAll());
+            try
+            {
+                var genero = await _generoService.GetAll();
+                if (genero != null)
+                    return Ok(genero);
+                else
+                    return NotFound("No se encontraron Generos");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteGenero(int id)
+        {
+            var result = await _generoService.Delete(id);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 400, result);
         }
 
         [HttpPost]
-        public IActionResult Post(Genero genero)
+        public async Task<IActionResult> PostGenero([FromForm] GeneroDto generoDto)
         {
-            _generoRepository.Insert(genero);
-
-            return Ok(_generoRepository.GetAll());
-        }
-
-        [HttpPut]
-        public IActionResult Put(Genero genero)
-        {
-            if (_generoRepository.GetById(genero.Id) == null)
-                return BadRequest();
-
-            _generoRepository.Update(genero);
-
-            return Ok(_generoRepository.GetAll());
-
+            var result = await _generoService.Insert(generoDto);
+            if (result.Success)
+                return Ok(result);
+            return StatusCode(result.isError() ? 500 : 400, result);
         }
 
     }

@@ -7,17 +7,22 @@ using System.Threading.Tasks;
 
 namespace Challenge.Entities
 {
-    public class Personaje
+    public class Personaje : EntityBase
     {
-
         [Key]
-        public int Id { get; set; }
-        public byte[] Image { get; set; }
-        [Required]
+        public int IdPersonaje { get; set; }
+        [Required(ErrorMessage = "La Imagen es Requerida")]
+        [StringLength(maximumLength: 1000, ErrorMessage = "La Imagen es demasiado largo")]
+        public string Image { get; set; }
+        [Required(ErrorMessage = "El Nombre es Requerido")]
+        [StringLength(maximumLength: 255, ErrorMessage = "El Nombre es demasiado largo")]
         public string Nombre { get; set; }
+        [Required(ErrorMessage = "La Edad es Requerida")]
         public int Edad { get; set; }
+        [Required(ErrorMessage = "El Peso es Requerido")]
         public float Peso { get; set; }
+        [Required(ErrorMessage = "La Historia es Requerida")]
+        [StringLength(maximumLength: 1000, ErrorMessage = "La Historia es demasiado largo")]
         public string Historia { get; set; }
-        public ICollection<PeliculaSerie> PeliculaSerieAsociada { get; set; }
     }
 }
